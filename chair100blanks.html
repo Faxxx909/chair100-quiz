@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>椅子信息背记小程序</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        .chair-image {
+            width: 300px;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .question {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .feedback {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .correct {
+            color: #27ae60;
+        }
+        .incorrect {
+            color: #e74c3c;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 300px;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error-message {
+            text-align: center;
+            color: #e74c3c;
+            margin-top: 10px;
+        }
+        .placeholder-image {
+            width: 300px;
+            height: 300px;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>椅子信息背记小程序</h1>
+        <p>查看椅子图片，回答关于名称、设计师或公司的问题</p>
+    </div>
+
+    <div class="card">
+        <div id="imageContainer" class="loading">
+            <div class="spinner"></div>
+        </div>
+        <div class="question" id="questionText"></div>
+        <input type="text" id="userAnswer" placeholder="请输入你的答案">
+        <button id="submitBtn">提交</button>
+        <div class="feedback" id="feedback"></div>
+        <button id="nextBtn" style="display: none; margin-top: 10px;">下一题</button>
+        <div class="error-message" id="errorMessage"></div>
+        <button id="retryBtn" style="display: none; margin-top: 10px;">重试加载图片</button>
+    </div>
+
+    <script>
+         // 椅子信息数据
+        const chairsData = [
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191042.png",
+                "名称": "霍约斯椅",
+                "设计师": "阿克塞尔·爱纳尔·霍约斯",
+                "公司": ""
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191107.png",
+                "名称": "MR20",
+                "设计师": "密斯·凡德罗",
+                "公司": ""
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191123.png",
+                "名称": "帕米欧扶手椅41号",
+                "设计师": "阿尔瓦·阿尔托",
+                "公司": ""
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191145.png",
+                "名称": "31号扶手椅",
+                "设计师": "阿尔瓦·阿尔托",
+                "公司": ""
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191155.png",
+                "名称": "折叠椅MK99200",
+                "设计师": "穆根思·库奇",
+                "公司": ""
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191208.png",
+                "名称": "折叠躺椅",
+                "设计师": "凯尔·克林特",
+                "公司": "鲁德·拉斯穆森"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191232.png",
+                "名称": "Z形椅",
+                "设计师": "赫里特·里特维尔德",
+                "公司": "梅茨公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191249.png",
+                "名称": "夏娃椅T101",
+                "设计师": "布鲁诺·马松",
+                "公司": "卡尔·马松公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191411.png",
+                "名称": "A型椅",
+                "设计师": "沙维尔·伯沙德",
+                "公司": "托里克斯公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191432.png",
+                "名称": "板条箱椅",
+                "设计师": "赫里特·里特维尔德",
+                "公司": "梅茨公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191445.png",
+                "名称": "标准椅4号",
+                "设计师": "让·普鲁韦",
+                "公司": "让·普鲁韦工作室"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191520.png",
+                "名称": "长椅",
+                "设计师": "马塞尔·布劳耶",
+                "公司": "伊索肯家具公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191754.png",
+                "名称": "43号躺椅",
+                "设计师": "阿尔瓦·阿尔托",
+                "公司": "阿泰克"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191804.png",
+                "名称": "蝴蝶椅198号",
+                "设计师": "乔治·法拉利一哈、多伊、胡安·库昌、安东尼奥·波涅",
+                "公司": "阿泰克-帕斯科公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191813.png",
+                "名称": "兰迪椅",
+                "设计师": "汉斯·柯雷",
+                "公司": "P.&W.布拉特曼金属制品厂"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191822.png",
+                "名称": "日晒椅",
+                "设计师": "艾诺·阿尔托",
+                "公司": "阿泰克"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191835.png",
+                "名称": "东京躺椅522号",
+                "设计师": "夏洛特·贝里安",
+                "公司": "卡西纳"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191935.png",
+                "名称": "鹈鹕椅",
+                "设计师": "芬·尤尔",
+                "公司": "尼尔斯·沃德尔"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191944.png",
+                "名称": "诗人沙发705/FJ41",
+                "设计师": "芬·尤尔",
+                "公司": "尼尔斯·沃德尔"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 191952.png",
+                "名称": "里索姆休闲椅654W",
+                "设计师": "延斯·里索姆",
+                "公司": "汉斯·诺尔家具公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192036.png",
+                "名称": "草座椅",
+                "设计师": "乔治·中岛",
+                "公司": "中岛工作室"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192048.png",
+                "名称": "佩尼拉3号",
+                "设计师": "布鲁诺·马松",
+                "公司": "卡尔·马松公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192240.png",
+                "名称": "摇椅J16",
+                "设计师": "汉斯·瓦格纳",
+                "公司": "丹麦家具消费者合作社"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192322.png",
+                "名称": "45号椅",
+                "设计师": "芬·尤尔",
+                "公司": "尼尔斯·沃德尔"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192337.png",
+                "名称": "DCW(木质餐椅)",
+                "设计师": "查尔斯·伊姆斯与蕾·伊姆斯",
+                "公司": "伊文斯制作公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192347.png",
+                "名称": "LCW(木质躺椅)",
+                "设计师": "查尔斯·伊姆斯与蕾·伊姆斯",
+                "公司": "伊文斯制作公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192357.png",
+                "名称": "儿童椅",
+                "设计师": "查尔斯·伊姆斯与蕾·伊姆斯",
+                "公司": "伊文斯制作公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192426.png",
+                "名称": "子宫椅70号",
+                "设计师": "小沙里宁",
+                "公司": "诺尔公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192435.png",
+                "名称": "AX椅6020号",
+                "设计师": "皮特·赫特与奥拉·米尔高德-尼尔森",
+                "公司": "弗里茨·汉森公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192453.png",
+                "名称": "孔雀椅",
+                "设计师": "汉斯·瓦格纳",
+                "公司": "约翰尼斯·汉森"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192600.png",
+                "名称": "模型132U",
+                "设计师": "唐·诺赫",
+                "公司": "诺尔公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192631.png",
+                "名称": "“听我说”椅",
+                "设计师": "爱德华·沃姆利",
+                "公司": "邓巴室内装饰公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192707.png",
+                "名称": "RAR(摇杆椅)",
+                "设计师": "查尔斯·伊姆斯与蕾·伊姆斯",
+                "公司": "赫曼米勒"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192728.png",
+                "名称": "DSW（无扶手餐椅木腿版）",
+                "设计师": "查尔斯·伊姆斯与蕾·伊姆斯",
+                "公司": "赫曼米勒"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192749.png",
+                "名称": "殖民地之椅",
+                "设计师": "欧雷·万施尔",
+                "公司": "A.J.艾佛森"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192801.png",
+                "名称": "安卓普斯椅",
+                "设计师": "马可·扎努索",
+                "公司": "阿尔-弗莱克斯"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192812.png",
+                "名称": "酋长椅",
+                "设计师": "芬·尤尔",
+                "公司": "尼尔斯·沃德尔"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192830.png",
+                "名称": "圈椅JH503",
+                "设计师": "汉斯·瓦格纳",
+                "公司": "约翰尼斯·汉森"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192840.png",
+                "名称": "折叠椅JH512",
+                "设计师": "汉斯·瓦格纳",
+                "公司": "约翰尼斯·汉森"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192852.png",
+                "名称": "叉骨椅CH24",
+                "设计师": "汉斯·瓦格纳",
+                "公司": "卡尔·汉森父子公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192903.png",
+                "名称": "边椅939号",
+                "设计师": "雷·驹井",
+                "公司": "J.G.家具"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 192926.png",
+                "名称": "熊爸爸椅AP19",
+                "设计师": "汉斯·瓦格纳",
+                "公司": "A.P.斯托伦"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193000.png",
+                "名称": "希勒堆叠椅",
+                "设计师": "罗宾·戴",
+                "公司": "希勒公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193456.png",
+                "名称": "羚羊椅",
+                "设计师": "厄内斯特·雷斯",
+                "公司": "雷斯家具公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193522.png",
+                "名称": "装饰线椅DKR",
+                "设计师": "查尔斯·伊姆斯与蕾·伊姆斯",
+                "公司": "赫曼米勒"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193538.png",
+                "名称": "元素椅PK25",
+                "设计师": "保罗·克雅汉",
+                "公司": "弗里茨·汉森公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193550.png",
+                "名称": "淑女椅",
+                "设计师": "马可·扎努索",
+                "公司": "阿尔-弗莱克斯"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193600.png",
+                "名称": "蚂蚁椅3100号",
+                "设计师": "阿诺·雅各布森",
+                "公司": "弗里茨·汉森公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193613.png",
+                "名称": "钻石椅421LU",
+                "设计师": "421LU",
+                "公司": "诺尔公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193629.png",
+                "名称": "靠背扶手躺椅",
+                "设计师": "罗宾·戴",
+                "公司": "希勒公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193637.png",
+                "名称": "675号椅",
+                "设计师": "罗宾·戴",
+                "公司": "希勒公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193646.png",
+                "名称": "太阳之家边椅",
+                "设计师": "卡洛·莫里诺",
+                "公司": "艾托尔·卡纳利、阿佩利和瓦里西奥工坊"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193659.png",
+                "名称": "柚木与藤条沙发FD147",
+                "设计师": "皮特·赤赫特与奥拉·米尔高德-尼尔森",
+                "公司": "弗兰斯父子公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193744.png",
+                "名称": "反叛椅",
+                "设计师": "弗里索·克拉默",
+                "公司": "“圆”家具公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193755.png",
+                "名称": "侍从椅JH540",
+                "设计师": "汉斯·瓦格纳",
+                "公司": "约翰尼斯·汉森"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193804.png",
+                "名称": "摇摆凳",
+                "设计师": "野口勇",
+                "公司": "诺尔公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193811.png",
+                "名称": "佃农椅",
+                "设计师": "阿切勒·卡斯蒂格利奥尼与皮埃尔·加科莫·卡斯蒂格利奥尼",
+                "公司": ""
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193823.png",
+                "名称": "椰子椅5569号",
+                "设计师": "乔治·尼尔森",
+                "公司": "赫曼米勒"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 193956.png",
+                "名称": "伊姆斯躺椅670号，配套脚凳671号",
+                "设计师": "查尔斯·伊姆斯与蕾·伊姆斯",
+                "公司": "赫曼米勒"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194226.png",
+                "名称": "7系列椅3107号",
+                "设计师": "阿诺·雅各布森",
+                "公司": "弗里茨·汉森公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194306.png",
+                "名称": "蝴蝶凳",
+                "设计师": "柳宗理",
+                "公司": "天童木工"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194319.png",
+                "名称": "PK22",
+                "设计师": "保罗·克雅汉",
+                "公司": "E.科德·克里斯滕森公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194352.png",
+                "名称": "棉花糖双人沙发5670号",
+                "设计师": "乔治·尼尔森工作室",
+                "公司": "赫曼米勒"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194406.png",
+                "名称": "DAF垂脚扶手椅",
+                "设计师": "乔治·尼尔森",
+                "公司": "赫曼米勒"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194423.png",
+                "名称": "拉米诺安乐椅",
+                "设计师": "伊夫·埃克斯通",
+                "公司": "思维德斯公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194435.png",
+                "名称": "郁金香椅151号",
+                "设计师": "小沙里宁",
+                "公司": "诺尔公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194449.png",
+                "名称": "氧化钪椅",
+                "设计师": "汉斯·伯拉楚德",
+                "公司": "霍夫家具"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194457.png",
+                "名称": "学校堆叠椅",
+                "设计师": "卢西恩·厄克拉尼",
+                "公司": "厄克尔公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194510.png",
+                "名称": "昌迪加尔办公桌椅",
+                "设计师": "皮埃尔·让雷特",
+                "公司": "柯布西耶与皮埃尔·让雷特"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194526.png",
+                "名称": "超轻椅699号",
+                "设计师": "吉奥·庞蒂",
+                "公司": "卡西纳"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194540.png",
+                "名称": "最高奖椅4130号",
+                "设计师": "阿诺·雅各布森",
+                "公司": "弗里茨·汉森公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194550.png",
+                "名称": "彻纳扶手椅",
+                "设计师": "诺曼·彻纳",
+                "公司": "胶合板工艺公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194559.png",
+                "名称": "蛋椅3316号",
+                "设计师": "阿诺·雅各布森",
+                "公司": "弗里茨·汉森公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194611.png",
+                "名称": "天鹅椅3320号",
+                "设计师": "阿诺·雅各布森",
+                "公司": "弗里茨·汉森公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194633.png",
+                "名称": "蛋筒椅",
+                "设计师": "维尔纳·潘顿",
+                "公司": "Plus-l inje"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194720.png",
+                "名称": "悬挂蛋椅",
+                "设计师": "南娜与约根·迪兹尔",
+                "公司": "罗伯特·韦格勒"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194740.png",
+                "名称": "西班牙椅2226号",
+                "设计师": "布吉·摩根森",
+                "公司": "弗雷德里西亚家具厂"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194752.png",
+                "名称": "时代一生活凳",
+                "设计师": "查尔斯·伊姆斯与蕾·伊姆斯",
+                "公司": "赫曼米勒"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194801.png",
+                "名称": "时代一生活会客椅ES108",
+                "设计师": "查尔斯·伊姆斯与蕾·伊姆斯",
+                "公司": "赫曼米勒"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194817.png",
+                "名称": "蘑菇椅560号",
+                "设计师": "皮埃尔·波林",
+                "公司": "雅适公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194834.png",
+                "名称": "潘顿椅",
+                "设计师": "维尔纳·潘顿",
+                "公司": "维特拉"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194943.png",
+                "名称": "吧台凳OD61",
+                "设计师": "埃里克·巴克",
+                "公司": "奥登斯木工"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 194955.png",
+                "名称": "G计划安乐椅6250R",
+                "设计师": "保罗·康迪",
+                "公司": "E.格姆"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195008.png",
+                "名称": "科罗娜椅EJ5",
+                "设计师": "保罗·沃德尔",
+                "公司": "埃里克·约根森"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195050.png",
+                "名称": "埃尔达扶手椅",
+                "设计师": "乔·科伦坡",
+                "公司": "舒适公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195058.png",
+                "名称": "GJ单椅",
+                "设计师": "吉莱特·约克",
+                "公司": "保罗·杰普森"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195122.png",
+                "名称": "巨灵椅",
+                "设计师": "奥利维·莫尔古",
+                "公司": "埃尔伯恩国际公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195131.png",
+                "名称": "球椅",
+                "设计师": "艾洛·阿尼奥",
+                "公司": "阿斯科公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195142.png",
+                "名称": "主管办公椅",
+                "设计师": "查尔斯·波洛克",
+                "公司": "诺尔公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195159.png",
+                "名称": "40/4椅",
+                "设计师": "大卫·罗兰",
+                "公司": "GF公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195209.png",
+                "名称": "大郁金香扶手椅F545",
+                "设计师": "皮埃尔·波林",
+                "公司": "雅适公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195219.png",
+                "名称": "万能椅4860号",
+                "设计师": "乔·科伦坡",
+                "公司": "卡特尔"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195230.png",
+                "名称": "安乐椅",
+                "设计师": "马丁·威瑟",
+                "公司": "'tSpectrum"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195248.png",
+                "名称": "帕拉纳扶手椅",
+                "设计师": "瓦伦·帕拉纳",
+                "公司": "诺尔国际"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195345.png",
+                "名称": "充气椅",
+                "设计师": "乔纳森·德·巴斯、多纳托·迪比诺、保罗·洛玛齐和卡拉·斯科拉里",
+                "公司": "扎诺塔公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195358.png",
+                "名称": "海鸥椅3208号",
+                "设计师": "阿诺·雅各布森",
+                "公司": "弗里茨·汉森公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195434.png",
+                "名称": "花园蛋椅",
+                "设计师": "皮特·盖茨",
+                "公司": "伊拉斯托根公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195512.png",
+                "名称": "软垫椅217号",
+                "设计师": "查尔斯·伊姆斯与蕾·伊姆斯",
+                "公司": "赫曼米勒"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195530.png",
+                "名称": "UP5唐娜椅",
+                "设计师": "盖特诺·佩斯",
+                "公司": "C&B Italia"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195613.png",
+                "名称": "比利罗吧台凳",
+                "设计师": "乔·科伦坡",
+                "公司": "扎诺塔公司"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195633.png",
+                "名称": "OMK堆叠椅",
+                "设计师": "罗德尼·金斯曼",
+                "公司": "OMK设计"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195737.png",
+                "名称": "合成45号打字椅Z9/r",
+                "设计师": "小埃托·索特萨斯",
+                "公司": "奥利维提"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 195936.png",
+                "名称": "猎鹰椅",
+                "设计师": "西格·雷塞尔",
+                "公司": "瓦特纳工厂"
+            },
+            {
+                "图片": "https://raw.githubusercontent.com/Faxxx909/chair100/main/屏幕截图 2025-05-24 200036.png",
+                "名称": "曲形边椅",
+                "设计师": "弗兰克·盖里",
+                "公司": "“轻松边缘”"
+            }
+        ];
+
+        // DOM 元素
+        const imageContainer = document.getElementById('imageContainer');
+        const questionText = document.getElementById('questionText');
+        const userAnswer = document.getElementById('userAnswer');
+        const submitBtn = document.getElementById('submitBtn');
+        const feedback = document.getElementById('feedback');
+        const nextBtn = document.getElementById('nextBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const retryBtn = document.getElementById('retryBtn');
+
+        let currentChair = null;
+        let currentQuestionType = null;
+        let retryCount = 0;
+        const maxRetries = 3;
+
+        // 创建占位符图片
+        function createPlaceholder() {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'placeholder-image';
+            placeholder.innerHTML = '<p>图片加载失败</p>';
+            return placeholder;
+        }
+
+        // 开始游戏
+        function startGame() {
+            userAnswer.value = '';
+            feedback.textContent = '';
+            submitBtn.style.display = 'block';
+            nextBtn.style.display = 'none';
+            retryBtn.style.display = 'none';
+            errorMessage.textContent = '';
+            retryCount = 0;
+
+            imageContainer.innerHTML = '<div class="spinner"></div>';
+            imageContainer.className = 'loading';
+
+            // 随机选择一把椅子
+            currentChair = chairsData[Math.floor(Math.random() * chairsData.length)];
+
+            // 随机选择提问类型（名称、设计师或公司）
+            const questionTypes = ['name', 'designer', 'company'];
+            currentQuestionType = questionTypes[Math.floor(Math.random() * questionTypes.length)];
+
+            // 更新界面
+            questionText.textContent = currentQuestionType === 'name' 
+                ? '这把椅子的名称是什么？' 
+                : currentQuestionType === 'designer' 
+                    ? '这把椅子的设计师是谁？' 
+                    : '这把椅子所属的公司是什么？';
+
+            loadChairImage();
+        }
+
+        // 加载椅子图片
+        function loadChairImage() {
+            const chairImage = new Image();
+            chairImage.className = 'chair-image';
+            chairImage.src = currentChair.图片;
+
+            chairImage.onload = function() {
+                imageContainer.innerHTML = '';
+                imageContainer.appendChild(chairImage);
+                imageContainer.className = '';
+            };
+
+            chairImage.onerror = function() {
+                retryCount++;
+                if (retryCount < maxRetries) {
+                    errorMessage.textContent = `图片加载失败，正在重试 (${retryCount}/${maxRetries})...`;
+                    setTimeout(loadChairImage, 1000);
+                } else {
+                    imageContainer.innerHTML = '';
+                    imageContainer.appendChild(createPlaceholder());
+                    imageContainer.className = '';
+                    errorMessage.textContent = '图片加载失败，请点击"重试加载图片"按钮重试';
+                    retryBtn.style.display = 'block';
+                }
+            };
+        }
+
+        // 重试加载图片
+        retryBtn.addEventListener('click', function() {
+            retryBtn.style.display = 'none';
+            errorMessage.textContent = '';
+            imageContainer.innerHTML = '<div class="spinner"></div>';
+            imageContainer.className = 'loading';
+            retryCount = 0;
+            loadChairImage();
+        });
+
+        // 提交答案
+        submitBtn.addEventListener('click', function() {
+            const answer = userAnswer.value.trim();
+            let correctAnswer = '';
+
+            if (currentQuestionType === 'name') {
+                correctAnswer = currentChair.名称;
+            } else if (currentQuestionType === 'designer') {
+                correctAnswer = currentChair.设计师.replace(/\n/g, ' ');
+            } else {
+                correctAnswer = currentChair.公司;
+            }
+
+            if (answer === correctAnswer) {
+                feedback.textContent = '回答正确！';
+                feedback.className = 'feedback correct';
+            } else {
+                feedback.textContent = `回答错误！正确答案是：${correctAnswer}`;
+                feedback.className = 'feedback incorrect';
+            }
+
+            submitBtn.style.display = 'none';
+            nextBtn.style.display = 'block';
+        });
+
+        // 下一题
+        nextBtn.addEventListener('click', startGame);
+
+        // 初始化游戏
+        startGame();
+    </script>
+</body>
+</html>
